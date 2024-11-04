@@ -1,5 +1,6 @@
 from server import PromptServer
 from aiohttp import web
+import json
 
 class PromptSelectorNode:
     """提示词选择器节点，用于在ComfyUI中动态选择预定义的提示词"""
@@ -44,24 +45,19 @@ class PromptSelectorNode:
         self.prompt_dict.clear()
         self.keys_list.clear()
         
-        # 处理多行输入
-        prompt_pairs = prompt_pairs.replace('\n', '')
-        pairs = [pair.strip() for pair in prompt_pairs.split(",") if pair.strip()]
+        try:
+            # 尝试将输入字符串解析为JSON对象
+            prompt_dict = json.loads("{"+prompt_pairs+"}")
+            if isinstance(prompt_dict, dict):
+                self.prompt_dict = prompt_dict
+                self.keys_list = list(prompt_dict.keys())
+            else:
+                raise ValueError("解析结果不是字典类型")
+        except json.JSONDecodeError as e:
+            print(f"解析JSON时出错: {str(e)}, 输入: {prompt_pairs}")
+        except Exception as e:
+            print(f"解析提示词对时出错: {str(e)}, 输入: {prompt_pairs}")
         
-        for pair in pairs:
-            try:
-                if '":"' in pair:
-                    key, value = pair.split('":"')
-                    key = key.strip(' "\n')
-                    value = value.strip(' "\n')
-                    
-                    if key and value:  # 确保key和value都不为空
-                        self.prompt_dict[key] = value
-                        self.keys_list.append(key)
-            except Exception as e:
-                print(f"解析提示词对时出错: {str(e)}, pair: {pair}")
-                continue
-                
         self._last_pairs = prompt_pairs
         
         # 如果没有解析出任何键值对，使用默认值
